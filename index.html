@@ -120,7 +120,7 @@
             sendData.append('jsonData', JSON.stringify(formData));  // Kirim seluruh data sebagai field form
 
             try {
-                const response = await fetch('https://script.google.com/macros/s/AKfycby92cXIBaPJlO8-ptOUc_kwcpOLPGqVjWkE_ukZInifjscA4MAO7Q4WHOzAerxMeYMo/exec', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxbSRyklGvAEDN2nrP6eqSzVEBq6DEZ-wxt1iInhfu2G2twbDP3LUFxw4shWjbsvURE/exec', {
                     method: 'POST',
                     body: sendData  // Tanpa header Content-Type (browser auto-set multipart/form-data)
                 });
