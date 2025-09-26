@@ -3,14 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Pengisian Invoice</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Form Pengisian Invoice dengan Tanda Tangan</title>
+    <!-- Signature Pad Library (via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        /* CSS dasar untuk form (jika style.css tidak ada, ini lengkap) */
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2, h3 { text-align: center; color: #333; }
+        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        label { display: block; margin: 10px 0; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 60px; resize: vertical; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .item { border: 1px solid #eee; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .removeBtn { background: #dc3545; }
+        .removeBtn:hover { background: #c82333; }
+        #message { margin-top: 20px; padding: 10px; border-radius: 4px; text-align: center; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        /* CSS khusus untuk signature */
+        #signatureCanvas {
+            border: 2px solid #ccc;
+            background-color: white;
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            touch-action: none; /* Untuk touch device */
+        }
+        .signature-section {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .signature-buttons {
+            margin-top: 10px;
+        }
+        .signature-buttons button {
+            margin-right: 10px;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .signature-buttons button:hover {
+            background: #0056b3;
+        }
+        .signature-buttons button.clear {
+            background: #dc3545;
+        }
+        .signature-buttons button.clear:hover {
+            background: #c82333;
+        }
+        #signatureWarning {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h2>Form Payment Request</h2>
+        <h2>Form Payment Request dengan Tanda Tangan</h2>
         <h3>TIARA HANA INDONESIA</h3>
-        <p>Form ini bisa diisi oleh siapa saja. Data akan tersimpan otomatis.</p>
+        <p>Form ini bisa diisi oleh siapa saja. Data akan tersimpan otomatis ke Spreadsheet, termasuk tanda tangan sebagai gambar.</p>
         
         <form id="invoiceForm">
             <div class="section">
@@ -41,6 +102,17 @@
                 <button type="button" id="addItemBtn" onclick="addItem()">+ Tambah Item</button>
             </div>
             
+            <!-- Section Tanda Tangan Baru (Wajib) -->
+            <div class="section signature-section">
+                <h3>Tanda Tangan (Wajib Diisi)</h3>
+                <p>Gambar tanda tangan Anda di area di bawah ini menggunakan mouse atau jari (di touch device). Ini akan disimpan sebagai gambar di kolom O Spreadsheet.</p>
+                <canvas id="signatureCanvas"></canvas>
+                <div class="signature-buttons">
+                    <button type="button" id="clearSignature">Clear Tanda Tangan</button>
+                </div>
+                <p id="signatureWarning">Tanda tangan wajib diisi sebelum submit!</p>
+            </div>
+            
             <button type="submit">Submit Data</button>
         </form>
         
@@ -51,19 +123,47 @@
         // Auto-fill date hari ini
         document.getElementById('date').valueAsDate = new Date();
 
+        // Inisialisasi Signature Pad
+        const canvas = document.getElementById('signatureCanvas');
+        const signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgb(255, 255, 255)',  // Latar putih
+            penColor: 'rgb(0, 0, 0)'  // Tinta hitam
+        });
+
+        // Resize canvas untuk responsive
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            // signaturePad.clear();  // Jangan clear otomatis saat resize
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Event clear signature
+        document.getElementById('clearSignature').addEventListener('click', function() {
+            signaturePad.clear();
+            document.getElementById('signatureWarning').style.display = 'none';
+        });
+
+        // Event listener untuk sembunyikan warning saat user mulai gambar
+        canvas.addEventListener('mousedown', function() { document.getElementById('signatureWarning').style.display = 'none'; });
+        canvas.addEventListener('touchstart', function() { document.getElementById('signatureWarning').style.display = 'none'; });
+
         // Fungsi tambah item
         function addItem() {
             const container = document.getElementById('itemsContainer');
             const newItem = container.firstElementChild.cloneNode(true);
             const itemCount = container.children.length + 1;
             newItem.querySelector('h4').textContent = `Item ${itemCount}`;
-            newItem.querySelectorAll('input, textarea').forEach(input => input.value = ''); // Reset values
+            newItem.querySelectorAll('input, textarea').forEach(input => input.value = '');
             newItem.querySelector('.netPrice').readOnly = true;
             newItem.querySelector('.removeBtn').onclick = function() { removeItem(this); };
             container.appendChild(newItem);
         }
 
-        // Fungsi hapus item (minimal 1 item)
+        // Fungsi hapus item
         function removeItem(button) {
             if (document.querySelectorAll('.item').length > 1) {
                 button.closest('.item').remove();
@@ -85,9 +185,18 @@
             }
         });
 
-        // Submit form (VERSI UPDATE: Gunakan URLSearchParams untuk hindari CORS dan handle data mudah di Apps Script)
+        // Submit form (dengan validasi signature + kirim base64)
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            // Validasi Tanda Tangan (WAJIB)
+            if (signaturePad.isEmpty()) {
+                document.getElementById('signatureWarning').style.display = 'block';
+                alert('Tanda tangan wajib diisi! Silakan gambar tanda tangan Anda di canvas.');
+                return;
+            }
+            document.getElementById('signatureWarning').style.display = 'none';
+
             const formData = {
                 date: document.getElementById('date').value,
                 department: document.getElementById('department').value,
@@ -115,14 +224,20 @@
                 return;
             }
 
-            // Buat URLSearchParams untuk kirim sebagai form-encoded (hindari CORS preflight dan mudah di-parse Apps Script)
+            // Convert signature ke base64 PNG
+            const signatureBase64 = signaturePad.toDataURL('image/png');
+
+            // Tambah signature ke formData
+            formData.signatureBase64 = signatureBase64;
+
+            // Buat URLSearchParams
             const sendData = new URLSearchParams();
-            sendData.append('jsonData', JSON.stringify(formData));  // Kirim seluruh data sebagai field form
+            sendData.append('jsonData', JSON.stringify(formData));
 
             try {
-                const response = await fetch('https://script.google.com/macros/s/AKfycbzBGRvB6klTyxboX0qp9go0KztNfXQoghUkTfVfK24Z6WnwCjl22V1XL_G10Vm1MgS0/exec', {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbzBGRvB6klTyxboX0qp9go0KztNfXQoghUkTfVfK24Z6WnwCjl22V1XL_G10Vm1MgS0/exec', {  // GANTI DENGAN URL APPS SCRIPT TERBARU ANDA
                     method: 'POST',
-                    body: sendData  // Browser auto-set Content-Type: application/x-www-form-urlencoded
+                    body: sendData
                 });
                 
                 if (!response.ok) {
@@ -130,7 +245,7 @@
                 }
                 
                 const resultText = await response.text();
-                const result = JSON.parse(resultText);  // Parse response JSON
+                const result = JSON.parse(resultText);
                 
                 const messageEl = document.getElementById('message');
                 messageEl.textContent = result.message;
@@ -138,7 +253,8 @@
                 
                 if (result.status === 'success') {
                     document.getElementById('invoiceForm').reset();
-                    location.reload(); // Reset form (seperti code asli Anda)
+                    signaturePad.clear();  // Clear signature setelah sukses
+                    location.reload();
                 }
             } catch (error) {
                 console.error('Fetch error:', error);
