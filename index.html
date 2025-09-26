@@ -85,7 +85,7 @@
             }
         });
 
-        // Submit form (VERSI UPDATE: Gunakan FormData untuk hindari CORS preflight)
+        // Submit form (VERSI UPDATE: Gunakan URLSearchParams untuk hindari CORS dan handle data mudah di Apps Script)
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const formData = {
@@ -115,14 +115,14 @@
                 return;
             }
 
-            // Buat FormData untuk kirim (hindari CORS preflight)
-            const sendData = new FormData();
+            // Buat URLSearchParams untuk kirim sebagai form-encoded (hindari CORS preflight dan mudah di-parse Apps Script)
+            const sendData = new URLSearchParams();
             sendData.append('jsonData', JSON.stringify(formData));  // Kirim seluruh data sebagai field form
 
             try {
                 const response = await fetch('https://script.google.com/macros/s/AKfycbxbSRyklGvAEDN2nrP6eqSzVEBq6DEZ-wxt1iInhfu2G2twbDP3LUFxw4shWjbsvURE/exec', {
                     method: 'POST',
-                    body: sendData  // Tanpa header Content-Type (browser auto-set multipart/form-data)
+                    body: sendData  // Browser auto-set Content-Type: application/x-www-form-urlencoded
                 });
                 
                 if (!response.ok) {
