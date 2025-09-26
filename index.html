@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Pengisian Invoice</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Form Pengisian Data Invoice/Produk</h2>
+        <p>Form ini bisa diisi oleh siapa saja. Data akan tersimpan otomatis.</p>
+        
+        <form id="invoiceForm">
+            <div class="section">
+                <h3>Informasi Umum</h3>
+                <label>Date: <input type="date" id="date" required></label>
+                <label>Department: <input type="text" id="department" required placeholder="e.g., IT, Finance"></label>
+                <label>PIC: <input type="text" id="pic" required placeholder="Nama PIC"></label>
+                <label>Bill To (Name): <input type="text" id="billToName" required placeholder="Nama penerima tagihan"></label>
+                <label>Bill To (Rek): <input type="text" id="billToRek" required placeholder="Rekening atau detail"></label>
+            </div>
+            
+            <div class="section">
+                <h3>Items (Produk) - Klik + untuk tambah item</h3>
+                <div id="itemsContainer">
+                    <div class="item">
+                        <h4>Item 1</h4>
+                        <label>Product Name: <input type="text" class="productName" required></label>
+                        <label>Description: <textarea class="description" required placeholder="Deskripsi produk"></textarea></label>
+                        <label>Amount: <input type="number" class="amount" required min="0" step="0.01"></label>
+                        <label>Qty: <input type="number" class="qty" required min="1"></label>
+                        <label>Gross Price: <input type="number" class="grossPrice" required min="0" step="0.01"></label>
+                        <label>Deduct (Discount): <input type="number" class="discount" value="0" min="0" step="0.01"></label>
+                        <label>Deduct (Tax): <input type="number" class="tax" value="0" min="0" step="0.01"></label>
+                        <label>Net Price: <input type="number" class="netPrice" required min="0" step="0.01" readonly></label>
+                        <button type="button" class="removeBtn" onclick="removeItem(this)">Hapus Item</button>
+                    </div>
+                </div>
+                <button type="button" id="addItemBtn" onclick="addItem()">+ Tambah Item</button>
+            </div>
+            
+            <button type="submit">Submit Data</button>
+        </form>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // Auto-fill date hari ini
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Fungsi tambah item
+        function addItem() {
+            const container = document.getElementById('itemsContainer');
+            const newItem = container.firstElementChild.cloneNode(true);
+            const itemCount = container.children.length + 1;
+            newItem.querySelector('h4').textContent = `Item ${itemCount}`;
+            newItem.querySelectorAll('input, textarea').forEach(input => input.value = ''); // Reset values
+            newItem.querySelector('.netPrice').readOnly = true;
+            newItem.querySelector('.removeBtn').onclick = function() { removeItem(this); };
+            container.appendChild(newItem);
+        }
+
+        // Fungsi hapus item (minimal 1 item)
+        function removeItem(button) {
+            if (document.querySelectorAll('.item').length > 1) {
+                button.closest('.item').remove();
+            } else {
+                alert('Minimal 1 item harus ada!');
+            }
+        }
+
+        // Auto-calculate Net Price per item
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('grossPrice') || e.target.classList.contains('discount') || e.target.classList.contains('tax')) {
+                const item = e.target.closest('.item');
+                const gross = parseFloat(item.querySelector('.grossPrice').value) || 0;
+                const discount = parseFloat(item.querySelector('.discount').value) || 0;
+                const tax = parseFloat(item.querySelector('.tax').value) || 0;
+                const qty = parseFloat(item.querySelector('.qty').value) || 1;
+                const netPrice = (gross - discount - tax) * qty;
+                item.querySelector('.netPrice').value = netPrice.toFixed(2);
+            }
+        });
+
+        // Submit form
+        document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                date: document.getElementById('date').value,
+                department: document.getElementById('department').value,
+                pic: document.getElementById('pic').value,
+                billToName: document.getElementById('billToName').value,
+                billToRek: document.getElementById('billToRek').value,
+                items: []
+            };
+
+            document.querySelectorAll('.item').forEach(item => {
+                formData.items.push({
+                    productName: item.querySelector('.productName').value,
+                    description: item.querySelector('.description').value,
+                    amount: item.querySelector('.amount').value,
+                    qty: item.querySelector('.qty').value,
+                    grossPrice: item.querySelector('.grossPrice').value,
+                    discount: item.querySelector('.discount').value,
+                    tax: item.querySelector('.tax').value,
+                    netPrice: item.querySelector('.netPrice').value
+                });
+            });
+
+            if (formData.items.length === 0) {
+                alert('Minimal 1 item harus diisi!');
+                return;
+            }
+
+            try {
+                const response = await fetch('YOUR_APPS_SCRIPT_URL_HERE', {  // Ganti dengan URL dari Langkah 1
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = result.message;
+                messageEl.className = result.status === 'success' ? 'success' : 'error';
+                if (result.status === 'success') {
+                    document.getElementById('invoiceForm').reset();
+                    location.reload(); // Reset form
+                }
+            } catch (error) {
+                document.getElementById('message').textContent = 'Error: ' + error.message;
+                document.getElementById('message').className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>
